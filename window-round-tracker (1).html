@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Round Tracker</title>
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --bg: #f4f5f3;
+    --surface: #ffffff;
+    --surface-2: #eef0ec;
+    --border: #d8dcd3;
+    --text: #1e2419;
+    --text-muted: #5c6355;
+    --accent: #2f6b3a;
+    --accent-hover: #255a30;
+    --accent-contrast: #ffffff;
+    --danger: #a3402f;
+    --danger-bg: #fbeae6;
+    --warn: #a3742f;
+    --warn-bg: #fbf2e6;
+    --ok: #2f6b3a;
+    --ok-bg: #e9f3ea;
+    --shadow: 0 1px 3px rgba(20,30,15,0.08), 0 1px 2px rgba(20,30,15,0.06);
+    --radius: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14170f;
+      --surface: #1d211a;
+      --surface-2: #262b21;
+      --border: #343a2c;
+      --text: #eceee7;
+      --text-muted: #a3ab97;
+      --accent: #5fae6f;
+      --accent-hover: #71bf80;
+      --accent-contrast: #0d130c;
+      --danger: #e08a76;
+      --danger-bg: #3a231d;
+      --warn: #e0b876;
+      --warn-bg: #3a2f1d;
+      --ok: #5fae6f;
+      --ok-bg: #1e2f20;
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14170f;
+    --surface: #1d211a;
+    --surface-2: #262b21;
+    --border: #343a2c;
+    --text: #eceee7;
+    --text-muted: #a3ab97;
+    --accent: #5fae6f;
+    --accent-hover: #71bf80;
+    --accent-contrast: #0d130c;
+    --danger: #e08a76;
+    --danger-bg: #3a231d;
+    --warn: #e0b876;
+    --warn-bg: #3a2f1d;
+    --ok: #5fae6f;
+    --ok-bg: #1e2f20;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  button { font-family: inherit; }
+
+  #app { max-width: 1000px; margin: 0 auto; padding: 16px 16px 64px; }
+
+  header.topbar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    background: var(--bg);
+    padding: 12px 0 8px;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .brand h1 { font-size: 19px; margin: 0; font-weight: 700; }
+  .brand .tagline { font-size: 12.5px; color: var(--text-muted); }
+
+  nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  nav.tabs button {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  nav.tabs button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+  nav.tabs button .badge {
+    background: rgba(0,0,0,0.12);
+    border-radius: 999px;
+    font-size: 11px;
+    padding: 1px 6px;
+    font-weight: 700;
+  }
+  nav.tabs button.active .badge { background: rgba(255,255,255,0.25); }
+  nav.tabs button.add { border-style: dashed; color: var(--text-muted); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 14.5px; }
+  .muted { color: var(--text-muted); font-size: 13px; }
+
+  .grid-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+  .stat:hover { border-color: var(--accent); }
+  .stat .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat .value { font-size: 24px; font-weight: 700; margin-top: 2px; }
+  .stat .value.danger { color: var(--danger); }
+  .stat .value.warn { color: var(--warn); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; }
+
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .pill.overdue { background: var(--danger-bg); color: var(--danger); }
+  .pill.today { background: var(--warn-bg); color: var(--warn); }
+  .pill.soon { background: var(--surface-2); color: var(--text-muted); }
+  .pill.scheduled { background: var(--surface-2); color: var(--text-muted); }
+  .pill.debt { background: var(--danger-bg); color: var(--danger); }
+  .pill.credit { background: var(--ok-bg); color: var(--ok); }
+
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 13.5px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+  }
+  label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 3px; }
+  .field { margin-bottom: 10px; }
+  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; }
+
+  button.btn {
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-contrast);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.btn:hover { background: var(--accent-hover); }
+  button.btn.secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+  button.btn.secondary:hover { border-color: var(--accent); }
+  button.btn.danger { background: var(--surface); color: var(--danger); border-color: var(--danger); }
+  button.btn.small { padding: 4px 9px; font-size: 12px; }
+  button.icon-btn {
+    border: none; background: transparent; color: var(--text-muted);
+    cursor: pointer; font-size: 14px; padding: 3px 6px; border-radius: 6px;
+  }
+  button.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  .row-actions { display: flex; gap: 2px; justify-content: flex-end; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .toolbar .left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  dialog {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    padding: 20px;
+    max-width: 440px;
+    width: 92vw;
+    box-shadow: var(--shadow);
+  }
+  dialog::backdrop { background: rgba(0,0,0,0.4); }
+  dialog h3 { margin-top: 0; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  .empty-state { text-align: center; padding: 30px 10px; color: var(--text-muted); }
+
+  .toast {
+    position: fixed; bottom: calc(20px + env(safe-area-inset-bottom,0px)); left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 13px;
+    box-shadow: var(--shadow); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+
+  #print-sheet { display: none; }
+
+  @media print {
+    body * { visibility: hidden; }
+    #print-sheet, #print-sheet * { visibility: visible; }
+    #print-sheet { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
+    .no-print { display: none !important; }
+  }
+  #print-sheet .ws-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+  #print-sheet h2 { margin: 0; }
+  #print-sheet table { width: 100%; border-collapse: collapse; }
+  #print-sheet th, #print-sheet td { border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
+  #print-sheet .tickbox { width: 22px; height: 22px; border: 1px solid #333; display: inline-block; }
+  #print-sheet tfoot td { font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app">Loading&hellip;</div>
+<div id="print-sheet"></div>
+<div id="toast" class="toast"></div>
+
+<template id="tpl-property-dialog">
+  <dialog id="property-dialog">
+    <h3 id="pd-title">Add property</h3>
+    <div class="field"><label>Address</label><input id="pd-address" type="text" placeholder="12 Green Lane"></div>
+    <div class="form-row">
+      <div class="field"><label>Price (&pound;)</label><input id="pd-price" type="number" min="0" step="0.5"></div>
+      <div class="field"><label>Frequency (weeks)</label><input id="pd-freq" type="number" min="1" step="1" value="4"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Last cleaned</label><input id="pd-last" type="date"></div>
+      <div class="field"><label>Next due</label><input id="pd-next" type="date"></div>
+    </div>
+    <div class="field"><label>Outstanding balance owed (&pound;)</label><input id="pd-balance" type="number" min="0" step="0.5" value="0"></div>
+    <div class="field"><label>Notes (access, keys, pets, etc.)</label><textarea id="pd-notes" rows="2"></textarea></div>
+    <div class="dialog-actions">
+      <button class="btn secondary" id="pd-cancel">Cancel</button>
+      <button class="btn" id="pd-save">Save</button>
+    </div>
+  </dialog>
+</template>
+
+<!-- Firebase (Realtime Database) — enables sync across devices.
+     If these fail to load (e.g. offline, or hosted somewhere that blocks
+     the CDN), the app below falls back to this browser's local storage. -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBFS3lY94GcPOG5MZapE4TL0CHyfGiNDAw",
+    authDomain: "window-cleaning-app-8dc91.firebaseapp.com",
+    databaseURL: "https://window-cleaning-app-8dc91-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "window-cleaning-app-8dc91",
+    storageBucket: "window-cleaning-app-8dc91.firebasestorage.app",
+    messagingSenderId: "643883120797",
+    appId: "1:643883120797:web:df72401da7d7a237f53c74"
+  };
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var state = { db: null, rounds: [], properties: [], view: {name:"loading"}, editingPropertyId: null };
+
+  function todayStr(){ var d=new Date(); return d.toISOString().slice(0,10); }
+  function addDays(dateStr, days){
+    var d = new Date(dateStr + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0,10);
+  }
+  function fmtDate(dateStr){
+    if(!dateStr) return "&mdash;";
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-GB", {day:"numeric", month:"short", year:"numeric"});
+  }
+  function money(n){ n = Number(n)||0; var sign = n<0 ? "-" : ""; return sign + "£" + Math.abs(n).toFixed(2); }
+  function balancePill(balance){
+    var b = Number(balance)||0;
+    if(b > 0.004) return '<span class="pill debt">'+money(b)+' owed</span>';
+    if(b < -0.004) return '<span class="pill credit">'+money(Math.abs(b))+' credit</span>';
+    return money(0);
+  }
+  function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function uid(){ return "id" + Math.random().toString(36).slice(2,10); }
+
+  function toast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  function dueStatus(nextDue, refDate){
+    refDate = refDate || todayStr();
+    if(!nextDue) return {key:"scheduled", label:"No date set"};
+    if(nextDue < refDate) return {key:"overdue", label:"Overdue"};
+    if(nextDue === refDate) return {key:"today", label:"Due today"};
+    var soonCutoff = addDays(refDate, 7);
+    if(nextDue <= soonCutoff) return {key:"soon", label:"Due soon"};
+    return {key:"scheduled", label:"Scheduled"};
+  }
+
+  // ---------- DB layer ----------
+  function propsForRound(roundId){
+    return state.properties.filter(function(p){ return p.roundId === roundId; })
+      .sort(function(a,b){ return (a.order||0)-(b.order||0) || (a.address||"").localeCompare(b.address||""); });
+  }
+  function roundById(id){ return state.rounds.find(function(r){ return r.id===id; }); }
+  function propertyById(id){ return state.properties.find(function(p){ return p.id===id; }); }
+
+  async function loadAll(){
+    if(!state.db){ render(); return; }
+    try {
+      var roundsSnap = await state.db.collection("rounds").get();
+      var propsSnap = await state.db.collection("properties").get();
+      state.rounds = roundsSnap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })
+        .sort(function(a,b){ return (a.order||0)-(b.order||0); });
+      state.properties = propsSnap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    } catch(e){
+      console.error("load failed", e);
+      toast("Could not load data — will retry");
+    }
+    render();
+  }
+
+  async function addRound(name){
+    var order = state.rounds.length ? Math.max.apply(null, state.rounds.map(function(r){return r.order||0;}))+1 : 0;
+    var ref = await state.db.collection("rounds").add({name:name, order:order, createdAt: todayStr()});
+    await loadAll();
+    return ref.id;
+  }
+  async function renameRound(id, name){
+    await state.db.doc("rounds/"+id).update({name:name});
+    await loadAll();
+  }
+  async function deleteRound(id){
+    var props = propsForRound(id);
+    for(var i=0;i<props.length;i++){ await state.db.doc("properties/"+props[i].id).delete(); }
+    await state.db.doc("rounds/"+id).delete();
+    await loadAll();
+  }
+  async function saveProperty(data, id){
+    if(id){
+      await state.db.doc("properties/"+id).update(data);
+    } else {
+      var siblingCount = propsForRound(data.roundId).length;
+      data.order = siblingCount;
+      await state.db.collection("properties").add(data);
+    }
+    await loadAll();
+  }
+  async function deleteProperty(id){
+    await state.db.doc("properties/"+id).delete();
+    await loadAll();
+  }
+  async function moveProperty(id, dir){
+    var p = propertyById(id);
+    if(!p) return;
+    var siblings = propsForRound(p.roundId);
+    var idx = siblings.findIndex(function(s){return s.id===id;});
+    var swapIdx = idx + dir;
+    if(swapIdx<0 || swapIdx>=siblings.length) return;
+    var other = siblings[swapIdx];
+    var a = p.order||0, b = other.order||0;
+    await state.db.doc("properties/"+p.id).update({order:b});
+    await state.db.doc("properties/"+other.id).update({order:a});
+    await loadAll();
+  }
+  async function recordPayment(id, amount){
+    var p = propertyById(id);
+    if(!p) return;
+    var newBalance = (Number(p.balance)||0) - amount; // paying down reduces owed / builds credit
+    await state.db.doc("properties/"+id).update({balance:newBalance});
+    await loadAll();
+  }
+
+  // ---------- Rendering ----------
+  function render(){
+    var app = document.getElementById("app");
+    if(!state.db){
+      app.innerHTML = '<div class="card"><h2>Storage unavailable</h2><p class="muted">This view can\'t reach persistent storage right now, so nothing can be saved. Try reopening the page.</p></div>';
+      return;
+    }
+    var html = renderTopbar() + renderView();
+    app.innerHTML = html;
+    bindGlobalEvents();
+  }
+
+  function renderTopbar(){
+    var v = state.view;
+    var tabs = '<button class="tab-dashboard '+(v.name==="dashboard"?"active":"")+'" data-nav="dashboard">Dashboard</button>';
+    state.rounds.forEach(function(r){
+      var count = propsForRound(r.id).filter(function(p){ return dueStatus(p.nextDue).key==="overdue" || dueStatus(p.nextDue).key==="today"; }).length;
+      var active = (v.name==="round" && v.roundId===r.id) ? "active" : "";
+      tabs += '<button class="'+active+'" data-nav="round" data-round="'+r.id+'">'+esc(r.name)+(count?' <span class="badge">'+count+'</span>':'')+'</button>';
+    });
+    tabs += '<button class="add" data-action="add-round">+ Round</button>';
+    var tagline = state.localMode ? "Data saved in this browser only" : (state.cloudMode ? "Synced across your devices" : "Rounds &middot; Worksheets &middot; Payments");
+    return '<header class="topbar"><div class="brand"><h1>🪟 Round Tracker</h1><span class="tagline">'+tagline+'</span></div><nav class="tabs">'+tabs+'</nav></header>';
+  }
+
+  function renderView(){
+    var v = state.view;
+    if(v.name==="dashboard") return renderDashboard();
+    if(v.name==="round") return renderRoundPage(v.roundId);
+    if(v.name==="worksheet") return renderWorksheetPage(v.roundId, v.date, v.mode||"print");
+    return "";
+  }
+
+  function renderDashboard(){
+    if(!state.rounds.length){
+      return '<div class="empty-state card"><h2>No rounds yet</h2><p>Create your first round to start adding properties.</p><button class="btn" data-action="add-round">+ Add a round</button></div>';
+    }
+    var cards = "";
+    var totalDebt = 0, totalOverdue = 0, totalToday = 0;
+    state.rounds.forEach(function(r){
+      var props = propsForRound(r.id);
+      var overdue = 0, dueToday = 0, debt = 0;
+      props.forEach(function(p){
+        var s = dueStatus(p.nextDue).key;
+        if(s==="overdue") overdue++;
+        if(s==="today") dueToday++;
+        debt += Number(p.balance)||0;
+      });
+      totalDebt += debt; totalOverdue += overdue; totalToday += dueToday;
+      cards += '<div class="card">'
+        + '<div class="toolbar"><div><h2>'+esc(r.name)+'</h2><span class="muted">'+props.length+' propert'+(props.length===1?'y':'ies')+'</span></div>'
+        + '<div class="left">'
+        + '<button class="btn secondary small" data-action="view-round" data-round="'+r.id+'">Open round</button>'
+        + '<button class="btn small" data-action="make-worksheet" data-round="'+r.id+'">Generate worksheet</button>'
+        + '</div></div>'
+        + '<div class="grid-summary" style="margin-bottom:0">'
+        + statBox("Overdue", overdue, overdue?"danger":"")
+        + statBox("Due today", dueToday, dueToday?"warn":"")
+        + statBox("Outstanding debt", money(debt), debt?"danger":"")
+        + '</div></div>';
+    });
+    var top = '<div class="grid-summary">'
+      + statBox("Rounds", state.rounds.length)
+      + statBox("Overdue jobs", totalOverdue, totalOverdue?"danger":"")
+      + statBox("Due today", totalToday, totalToday?"warn":"")
+      + statBox("Total owed", money(totalDebt), totalDebt?"danger":"")
+      + '</div>';
+    return top + cards;
+  }
+  function statBox(label, value, cls){
+    return '<div class="stat"><div class="label">'+esc(label)+'</div><div class="value '+(cls||"")+'">'+value+'</div></div>';
+  }
+
+  function renderRoundPage(roundId){
+    var r = roundById(roundId);
+    if(!r) return '<div class="card">Round not found.</div>';
+    var props = propsForRound(roundId);
+    var rows = "";
+    if(!props.length){
+      rows = '<tr><td colspan="7" class="empty-state">No properties in this round yet.</td></tr>';
+    } else {
+      props.forEach(function(p, i){
+        var st = dueStatus(p.nextDue);
+        rows += '<tr>'
+          + '<td>'+esc(p.address)+(p.notes?'<div class="muted">'+esc(p.notes)+'</div>':'')+'</td>'
+          + '<td class="num">'+money(p.price)+'</td>'
+          + '<td class="num">'+ (p.frequencyWeeks||"") +'wk</td>'
+          + '<td>'+fmtDate(p.lastCleaned)+'</td>'
+          + '<td>'+fmtDate(p.nextDue)+' <span class="pill '+st.key+'">'+st.label+'</span></td>'
+          + '<td class="num">'+ balancePill(p.balance) +'</td>'
+          + '<td><div class="row-actions">'
+            + '<button class="icon-btn" title="Record payment" data-action="pay-prop" data-prop="'+p.id+'">&#163;</button>'
+            + '<button class="icon-btn" title="Move up" data-action="move-prop" data-dir="-1" data-prop="'+p.id+'">&#8593;</button>'
+            + '<button class="icon-btn" title="Move down" data-action="move-prop" data-dir="1" data-prop="'+p.id+'">&#8595;</button>'
+            + '<button class="icon-btn" title="Edit" data-action="edit-prop" data-prop="'+p.id+'">&#9998;</button>'
+            + '<button class="icon-btn" title="Delete" data-action="delete-prop" data-prop="'+p.id+'">&#10005;</button>'
+          + '</div></td>'
+          + '</tr>';
+      });
+    }
+    return '<div class="toolbar">'
+      + '<div class="left"><h2 style="margin:0">'+esc(r.name)+'</h2>'
+        + '<button class="icon-btn" title="Rename round" data-action="rename-round" data-round="'+r.id+'">&#9998;</button>'
+        + '<button class="icon-btn" title="Delete round" data-action="delete-round" data-round="'+r.id+'">&#10005;</button></div>'
+      + '<div class="left">'
+        + '<button class="btn secondary" data-action="add-prop" data-round="'+r.id+'">+ Add property</button>'
+        + '<button class="btn" data-action="make-worksheet" data-round="'+r.id+'">Generate worksheet</button>'
+      + '</div></div>'
+      + '<div class="card table-wrap"><table><thead><tr><th>Address</th><th>Price</th><th>Freq.</th><th>Last cleaned</th><th>Next due</th><th>Owed</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  function dueListFor(roundId, date){
+    return propsForRound(roundId).filter(function(p){
+      return p.nextDue && p.nextDue <= date;
+    }).sort(function(a,b){ return (a.order||0)-(b.order||0); });
+  }
+
+  function renderWorksheetPage(roundId, date, mode){
+    var r = roundById(roundId);
+    if(!r) return '<div class="card">Round not found.</div>';
+    date = date || todayStr();
+    var due = dueListFor(roundId, date);
+    var grandTotal = 0;
+
+    var rowsRecord = "", rowsPrint = "";
+    due.forEach(function(p){
+      var owed = Number(p.balance)||0;
+      var price = Number(p.price)||0;
+      var total = owed + price;
+      grandTotal += total;
+      rowsPrint += '<tr>'
+        + '<td>'+esc(p.address)+(p.notes?' &mdash; <em>'+esc(p.notes)+'</em>':'')+'</td>'
+        + '<td>'+money(price)+'</td>'
+        + '<td>'+(owed>0?money(owed):"&mdash;")+'</td>'
+        + '<td><strong>'+money(total)+'</strong></td>'
+        + '<td style="text-align:center"><span class="tickbox"></span></td>'
+        + '<td style="text-align:center"><span class="tickbox"></span></td>'
+        + '<td style="min-width:70px">&nbsp;</td>'
+        + '</tr>';
+
+      rowsRecord += '<tr data-prop-row="'+p.id+'">'
+        + '<td>'+esc(p.address)+(p.notes?'<div class="muted">'+esc(p.notes)+'</div>':'')+'</td>'
+        + '<td class="num">'+money(price)+'</td>'
+        + '<td class="num">'+(owed>0?money(owed):"&mdash;")+'</td>'
+        + '<td class="num"><strong>'+money(total)+'</strong></td>'
+        + '<td><label style="display:flex;align-items:center;gap:5px;color:var(--text)"><input type="checkbox" class="chk-done" data-prop="'+p.id+'" data-total="'+total.toFixed(2)+'"> Cleaned</label></td>'
+        + '<td><div style="display:flex;align-items:center;gap:4px"><span class="muted">&pound;</span><input type="number" class="amt-collected" data-prop="'+p.id+'" min="0" step="0.5" value="'+total.toFixed(2)+'" style="width:80px"></div></td>'
+        + '</tr>';
+    });
+
+    if(!due.length){
+      rowsRecord = '<tr><td colspan="6" class="empty-state">Nothing due for '+fmtDate(date)+' in this round.</td></tr>';
+      rowsPrint = '<tr><td colspan="7" style="text-align:center">Nothing due.</td></tr>';
+    }
+
+    // Build the hidden print sheet
+    var printSheet = document.getElementById("print-sheet");
+    printSheet.innerHTML = '<div class="ws-header"><div><h2>'+esc(r.name)+' &mdash; Worksheet</h2><div>Date: '+fmtDate(date)+'</div></div><div>Round Tracker</div></div>'
+      + '<table><thead><tr><th>Address</th><th>Price</th><th>Owed (prev.)</th><th>Total due</th><th>Cleaned</th><th>Paid</th><th>Amount collected</th></tr></thead>'
+      + '<tbody>'+rowsPrint+'</tbody>'
+      + '<tfoot><tr><td colspan="3">Total to collect</td><td>'+money(grandTotal)+'</td><td colspan="3"></td></tr></tfoot></table>';
+
+    var modeToggle = '<div class="left">'
+      + '<button class="btn '+(mode==="print"?"":"secondary")+'" data-action="ws-mode" data-mode="print" data-round="'+roundId+'" data-date="'+date+'">Print sheet</button>'
+      + '<button class="btn '+(mode==="record"?"":"secondary")+'" data-action="ws-mode" data-mode="record" data-round="'+roundId+'" data-date="'+date+'">Record results</button>'
+      + '</div>';
+
+    var header = '<div class="toolbar"><div class="left"><h2 style="margin:0">Worksheet: '+esc(r.name)+'</h2></div>'
+      + '<div class="left"><label style="margin:0" class="muted">Due on or before</label>'
+      + '<input type="date" id="ws-date" value="'+date+'" style="width:auto">'
+      + modeToggle + '</div></div>';
+
+    var body;
+    if(mode==="print"){
+      body = '<div class="card"><p class="muted">This shows what will print. Use your browser\'s Print (or the button below) to get a paper copy to take out on the round.</p>'
+        + '<div class="table-wrap"><table><thead><tr><th>Address</th><th>Price</th><th>Owed (prev.)</th><th>Total due</th><th>Cleaned</th><th>Paid</th><th>Amount collected</th></tr></thead><tbody>'+rowsPrint+'</tbody>'
+        + '<tfoot><tr><td colspan="3">Total to collect</td><td colspan="4"><strong>'+money(grandTotal)+'</strong></td></tr></tfoot></table></div>'
+        + '<div style="margin-top:14px"><button class="btn" data-action="do-print">&#128424; Print worksheet</button></div></div>';
+    } else {
+      body = '<div class="card"><p class="muted">Tick off what was actually cleaned and enter what you actually collected (defaults to the full amount due &mdash; change it for partial payments). Cleaned jobs reschedule automatically; anything short of the total due carries forward as owed balance, and overpayments carry forward as credit.</p>'
+        + '<div class="table-wrap"><table><thead><tr><th>Address</th><th>Price</th><th>Owed (prev.)</th><th>Total due</th><th>Cleaned</th><th>Amount collected</th></tr></thead><tbody>'+rowsRecord+'</tbody></table></div>'
+        + (due.length ? '<div style="margin-top:14px"><button class="btn" data-action="save-worksheet" data-round="'+roundId+'" data-date="'+date+'">Save results</button></div>' : '')
+        + '</div>';
+    }
+    return header + body;
+  }
+
+  // ---------- Events ----------
+  function bindGlobalEvents(){
+    document.querySelectorAll("[data-nav]").forEach(function(el){
+      el.onclick = function(){
+        var nav = el.getAttribute("data-nav");
+        if(nav==="dashboard") state.view = {name:"dashboard"};
+        if(nav==="round") state.view = {name:"round", roundId: el.getAttribute("data-round")};
+        render();
+      };
+    });
+    bindAction("add-round", function(){ openTextPrompt("New round", "Round name", "", function(name){
+      if(name && name.trim()) addRound(name.trim()).then(function(id){ state.view={name:"round", roundId:id}; render(); });
+    }); });
+    bindAction("view-round", function(el){ state.view = {name:"round", roundId: el.getAttribute("data-round")}; render(); });
+    bindAction("rename-round", function(el){
+      var r = roundById(el.getAttribute("data-round"));
+      openTextPrompt("Rename round", "Round name", r.name, function(name){
+        if(name && name.trim()) renameRound(r.id, name.trim());
+      });
+    });
+    bindAction("delete-round", function(el){
+      var r = roundById(el.getAttribute("data-round"));
+      if(confirm('Delete "'+r.name+'" and all its properties? This cannot be undone.')){
+        deleteRound(r.id).then(function(){ state.view={name:"dashboard"}; render(); });
+      }
+    });
+    bindAction("make-worksheet", function(el){
+      state.view = {name:"worksheet", roundId: el.getAttribute("data-round"), date: todayStr(), mode:"print"};
+      render();
+    });
+    bindAction("add-prop", function(el){ openPropertyDialog(el.getAttribute("data-round"), null); });
+    bindAction("edit-prop", function(el){
+      var p = propertyById(el.getAttribute("data-prop"));
+      openPropertyDialog(p.roundId, p);
+    });
+    bindAction("delete-prop", function(el){
+      var p = propertyById(el.getAttribute("data-prop"));
+      if(confirm('Delete "'+p.address+'"?')) deleteProperty(p.id);
+    });
+    bindAction("move-prop", function(el){
+      moveProperty(el.getAttribute("data-prop"), parseInt(el.getAttribute("data-dir"),10));
+    });
+    bindAction("pay-prop", function(el){
+      var p = propertyById(el.getAttribute("data-prop"));
+      openPaymentDialog(p);
+    });
+    bindAction("ws-mode", function(el){
+      state.view = {name:"worksheet", roundId: el.getAttribute("data-round"), date: el.getAttribute("data-date"), mode: el.getAttribute("data-mode")};
+      render();
+    });
+    bindAction("do-print", function(){ window.print(); });
+    bindAction("save-worksheet", function(el){ saveWorksheetResults(el.getAttribute("data-round"), el.getAttribute("data-date")); });
+
+    var dateInput = document.getElementById("ws-date");
+    if(dateInput){
+      dateInput.onchange = function(){
+        state.view.date = dateInput.value;
+        render();
+      };
+    }
+  }
+  function bindAction(name, fn){
+    document.querySelectorAll('[data-action="'+name+'"]').forEach(function(el){
+      el.onclick = function(){ fn(el); };
+    });
+  }
+
+  async function saveWorksheetResults(roundId, date){
+    var rows = document.querySelectorAll("[data-prop-row]");
+    var updates = [];
+    rows.forEach(function(row){
+      var id = row.getAttribute("data-prop-row");
+      var p = propertyById(id);
+      var doneChk = row.querySelector(".chk-done");
+      var done = doneChk.checked;
+      if(!done) return;
+      var total = Number(doneChk.getAttribute("data-total"))||0;
+      var collectedRaw = row.querySelector(".amt-collected").value;
+      var collected = collectedRaw === "" ? 0 : Number(collectedRaw);
+      if(isNaN(collected)) collected = 0;
+      var newBalance = total - collected; // positive = still owed, negative = credit
+      var nextDue = p.frequencyWeeks ? addDays(date, Number(p.frequencyWeeks)*7) : p.nextDue;
+      updates.push({id:id, lastCleaned:date, nextDue:nextDue, balance:newBalance});
+    });
+    if(!updates.length){ toast("No jobs marked as cleaned"); return; }
+    for(var i=0;i<updates.length;i++){
+      var u = updates[i];
+      await state.db.doc("properties/"+u.id).update({lastCleaned:u.lastCleaned, nextDue:u.nextDue, balance:u.balance});
+    }
+    await loadAll();
+    toast(updates.length + " job(s) updated");
+    state.view = {name:"round", roundId: roundId};
+    render();
+  }
+
+  // ---------- Dialogs ----------
+  function openTextPrompt(title, label, value, onSave){
+    var dlg = document.createElement("dialog");
+    dlg.innerHTML = '<h3>'+esc(title)+'</h3><div class="field"><label>'+esc(label)+'</label><input type="text" id="tp-input" value="'+esc(value)+'"></div>'
+      + '<div class="dialog-actions"><button class="btn secondary" id="tp-cancel">Cancel</button><button class="btn" id="tp-save">Save</button></div>';
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    dlg.querySelector("#tp-cancel").onclick = function(){ dlg.close(); dlg.remove(); };
+    dlg.querySelector("#tp-save").onclick = function(){
+      var v = dlg.querySelector("#tp-input").value;
+      dlg.close(); dlg.remove();
+      onSave(v);
+    };
+    dlg.addEventListener("close", function(){ if(dlg.parentNode) dlg.remove(); });
+  }
+
+  function openPropertyDialog(roundId, existing){
+    var tpl = document.getElementById("tpl-property-dialog");
+    var frag = tpl.content.cloneNode(true);
+    document.body.appendChild(frag);
+    var dlg = document.getElementById("property-dialog");
+    document.getElementById("pd-title").textContent = existing ? "Edit property" : "Add property";
+    document.getElementById("pd-address").value = existing ? existing.address||"" : "";
+    document.getElementById("pd-price").value = existing ? existing.price||"" : "";
+    document.getElementById("pd-freq").value = existing ? existing.frequencyWeeks||4 : 4;
+    document.getElementById("pd-last").value = existing ? existing.lastCleaned||"" : "";
+    document.getElementById("pd-next").value = existing ? existing.nextDue||todayStr() : todayStr();
+    document.getElementById("pd-balance").value = existing ? existing.balance||0 : 0;
+    document.getElementById("pd-notes").value = existing ? existing.notes||"" : "";
+    dlg.showModal();
+    document.getElementById("pd-cancel").onclick = function(){ dlg.close(); dlg.remove(); };
+    document.getElementById("pd-save").onclick = function(){
+      var address = document.getElementById("pd-address").value.trim();
+      if(!address){ toast("Address is required"); return; }
+      var data = {
+        roundId: roundId,
+        address: address,
+        price: Number(document.getElementById("pd-price").value)||0,
+        frequencyWeeks: Number(document.getElementById("pd-freq").value)||4,
+        lastCleaned: document.getElementById("pd-last").value || null,
+        nextDue: document.getElementById("pd-next").value || todayStr(),
+        balance: Number(document.getElementById("pd-balance").value)||0,
+        notes: document.getElementById("pd-notes").value.trim()
+      };
+      dlg.close(); dlg.remove();
+      saveProperty(data, existing ? existing.id : null);
+    };
+    dlg.addEventListener("close", function(){ if(dlg.parentNode) dlg.remove(); });
+  }
+
+  function openPaymentDialog(p){
+    var currentBalanceLabel = (Number(p.balance)||0) > 0.004
+      ? money(p.balance) + " owed"
+      : (Number(p.balance)||0) < -0.004 ? money(Math.abs(p.balance)) + " credit already held" : "nothing owed";
+    var dlg = document.createElement("dialog");
+    dlg.innerHTML = '<h3>Record payment</h3>'
+      + '<p class="muted" style="margin-top:-4px">'+esc(p.address)+' &mdash; currently '+currentBalanceLabel+'.</p>'
+      + '<div class="field"><label>Amount received (&pound;)</label><input type="number" id="pay-amount" min="0" step="0.5" autofocus></div>'
+      + '<p class="muted">Use this for a payment received outside a worksheet &mdash; e.g. a customer paying up front, clearing arrears between cleans, or a one-off partial payment. It reduces what\'s owed, or adds credit if they\'ve paid more than they currently owe.</p>'
+      + '<div class="dialog-actions"><button class="btn secondary" id="pay-cancel">Cancel</button><button class="btn" id="pay-save">Save payment</button></div>';
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    dlg.querySelector("#pay-cancel").onclick = function(){ dlg.close(); dlg.remove(); };
+    dlg.querySelector("#pay-save").onclick = function(){
+      var amt = Number(dlg.querySelector("#pay-amount").value);
+      dlg.close(); dlg.remove();
+      if(!amt || isNaN(amt) || amt<=0){ toast("Enter an amount greater than zero"); return; }
+      recordPayment(p.id, amt).then(function(){ toast("Payment recorded"); });
+    };
+    dlg.addEventListener("close", function(){ if(dlg.parentNode) dlg.remove(); });
+  }
+
+  // ---------- Local (browser) storage fallback ----------
+  // Lets this same file run standalone (e.g. on GitHub Pages) when the
+  // Claude "db" capability isn't available. Mirrors just enough of the
+  // db API shape used above.
+  function makeLocalDb(){
+    var KEY = "roundTrackerData";
+    function load(){
+      try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+      catch(e){ return {}; }
+    }
+    function save(data){
+      try { localStorage.setItem(KEY, JSON.stringify(data)); }
+      catch(e){ console.error("localStorage save failed", e); toast("Could not save — storage may be full"); }
+    }
+    function collection(name){
+      return {
+        get: async function(){
+          var data = load();
+          var col = data[name] || {};
+          var docs = Object.keys(col).map(function(id){
+            return { id: id, data: function(){ return col[id]; } };
+          });
+          return { docs: docs };
+        },
+        add: async function(obj){
+          var data = load();
+          if(!data[name]) data[name] = {};
+          var id = "id" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+          data[name][id] = obj;
+          save(data);
+          return { id: id };
+        }
+      };
+    }
+    function doc(path){
+      var parts = path.split("/");
+      var name = parts[0], id = parts[1];
+      return {
+        update: async function(patch){
+          var data = load();
+          if(!data[name]) data[name] = {};
+          data[name][id] = Object.assign({}, data[name][id]||{}, patch);
+          save(data);
+        },
+        delete: async function(){
+          var data = load();
+          if(data[name]) delete data[name][id];
+          save(data);
+        }
+      };
+    }
+    return { collection: collection, doc: doc };
+  }
+
+  // ---------- Firebase (Realtime Database) sync ----------
+  // Same collection/doc shape as the other two storage layers, backed by
+  // Firebase so data syncs live across every device that opens this page.
+  function makeFirebaseDb(rtdb){
+    function collection(name){
+      return {
+        get: async function(){
+          var snap = await rtdb.ref(name).once("value");
+          var val = snap.val() || {};
+          var docs = Object.keys(val).map(function(id){
+            return { id: id, data: function(){ return val[id]; } };
+          });
+          return { docs: docs };
+        },
+        add: async function(obj){
+          var ref = await rtdb.ref(name).push(obj);
+          return { id: ref.key };
+        }
+      };
+    }
+    function doc(path){
+      var parts = path.split("/");
+      var ref = rtdb.ref(parts[0] + "/" + parts[1]);
+      return {
+        update: async function(patch){ await ref.update(patch); },
+        delete: async function(){ await ref.remove(); }
+      };
+    }
+    return { collection: collection, doc: doc };
+  }
+
+  // ---------- Boot ----------
+  async function boot(){
+    state.view = {name:"dashboard"};
+    try {
+      if(window.claude && window.claude.use){
+        state.db = await window.claude.use("db");
+      }
+    } catch(e){ console.error(e); }
+    if(!state.db && window.firebase && window.FIREBASE_CONFIG){
+      try {
+        firebase.initializeApp(window.FIREBASE_CONFIG);
+        await firebase.auth().signInAnonymously();
+        state.db = makeFirebaseDb(firebase.database());
+        state.cloudMode = true;
+      } catch(e){
+        console.error("Firebase init/sign-in failed, falling back to local storage", e);
+      }
+    }
+    if(!state.db){
+      state.db = makeLocalDb();
+      state.localMode = true;
+    }
+    await loadAll();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
